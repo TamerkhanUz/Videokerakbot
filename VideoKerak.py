@@ -53,8 +53,7 @@ async def check_sub_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user_id = query.from_user.id
     lang = user_lang.get(user_id, "uz")
 
-    # Haqiqiy kanal obunasini tekshirish (Telegram API orqali)
-    is_subscribed = await check_subscription(update, context, user_id)  # context qo'shildi
+    is_subscribed = await check_subscription(update, context, user_id)
 
     texts_success = {
         "uz": "✅ Siz obuna bo‘ldingiz! Endi videoni yuboring.",
@@ -77,7 +76,6 @@ async def check_sub_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # Kanalga obuna bo'lishni tekshirish
 async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
     try:
-        # Foydalanuvchining kanalga obuna bo‘lganini tekshirish
         chat_member = await context.bot.get_chat_member(CHANNEL, user_id)
         return chat_member.status in ['member', 'administrator', 'creator']
     except Exception as e:
@@ -86,11 +84,25 @@ async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE,
 
 # Video yuklash
 async def download_video(url, message, context, user_id):
+    merged_cookie_file = "merged_cookies.txt"
+
+    # Cookies fayllarini birlashtirish
+    try:
+        with open("cookie1.txt", "r", encoding="utf-8") as f1, \
+             open("cookie2.txt", "r", encoding="utf-8") as f2, \
+             open(merged_cookie_file, "w", encoding="utf-8") as fout:
+            fout.write(f1.read())
+            fout.write("\n")
+            fout.write(f2.read())
+    except Exception as e:
+        await message.edit_text(f"❌ Cookies faylini birlashtirishda xatolik: {e}")
+        return
+
     ydl_opts = {
         'format': 'best',
-        'cookiefile': 'cookie.txt',  # Cookie fayli yo'li
+        'cookiefile': merged_cookie_file,
         'quiet': True,
-        'noplaylist': True,  # Playlistni yuklamaslik
+        'noplaylist': True,
     }
 
     try:
@@ -102,12 +114,12 @@ async def download_video(url, message, context, user_id):
 
         with open(filename, 'rb') as video_file:
             await context.bot.send_video(
-                chat_id=message.chat_id,
+                chat_id=message.chat.id,
                 video=video_file,
                 caption="📽 @VideoKerakBot orqali yuklab olindi"
             )
 
-        os.remove(filename)  # Faylni o'chirish
+        os.remove(filename)
 
     except Exception as e:
         print(f"Video yuklashda xatolik: {e}")
